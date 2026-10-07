@@ -64,13 +64,15 @@ def _jugar_humano(juego: TileUp, ver_proximas: int = 5) -> None:
 
 def jugar(instancia, agente: Optional[Agente] = None, humano: bool = False,
           semilla: int = 0, limite_s: float = 10.0,
-          salida: Optional[str] = None, verbose: bool = True) -> dict:
+          salida: Optional[str] = None, verbose: bool = True,
+          visual: bool = False) -> dict:
     """Inicia una partida de TileUp.
 
     instancia : ruta al archivo o un objeto Instancia.
     agente    : callable agente(juego, semilla, limite_s) -> (plan, esfuerzo). Se ignora si humano=True.
     humano    : False (por defecto) = juega el agente; True = juega usted por consola.
     salida    : ruta del archivo de solucion a escribir (se escribe aun en derrota).
+    visual    : imprime el tablero inicial y cada estado del plan ejecutado.
     Devuelve un dict con las metricas finales y el plan ejecutado.
     """
     inst = instancia if isinstance(instancia, Instancia) else leer_instancia(instancia)
@@ -85,17 +87,29 @@ def jugar(instancia, agente: Optional[Agente] = None, humano: bool = False,
         if agente is None:
             raise ValueError("se requiere un agente cuando humano=False")
         plan, esfuerzo = agente(juego.clonar(), semilla, limite_s)
+        color = _habilitar_ansi() if visual else False
+        if visual:
+            print(f"Estado inicial 0/{len(inst.fichas)} | vacias={juego.n * juego.n}")
+            print(juego.render(color=color))
         # El motor ejecuta el plan: el agente nunca toca el estado oficial.
         for fila, col in plan:
             if juego.terminado:
                 break
             try:
-                juego.step(juego.siguiente, fila, col)
+                res_step = juego.step(juego.siguiente, fila, col)
             except JugadaIlegal as e:
                 if verbose:
                     print(f"[aviso] el agente propuso una jugada ilegal en la ficha "
                           f"{juego.siguiente}: {e}. Se detiene la partida.", file=sys.stderr)
                 break
+            if visual:
+                fusion = "si" if res_step.info["fusion"] else "no"
+                print(f"\nEstado {juego.colocadas}/{len(inst.fichas)} | "
+                      f"ficha {res_step.info['ficha']} "
+                      f"({res_step.info['color']}:{res_step.info['valor']}) en "
+                      f"({fila}, {col}) | vacias={juego.n * juego.n - juego.ocupadas} | "
+                      f"fusion={fusion}")
+                print(juego.render(color=color))
 
     dt = time.perf_counter() - t0
     if salida:

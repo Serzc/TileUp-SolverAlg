@@ -10,7 +10,7 @@ sys.path.insert(0, RAIZ)
 from tileup import InstanciaError, JugadaIlegal, TileUp, DERROTA, VICTORIA  # noqa: E402
 from tileup.instancia import parsear_instancia  # noqa: E402
 from tileup.juego import jugar  # noqa: E402
-from agentes import voraz, aleatorio  # noqa: E402
+from agentes import voraz, aleatorio, busqueda  # noqa: E402
 import verificador  # noqa: E402
 
 
@@ -144,6 +144,41 @@ class TestIntegracion(unittest.TestCase):
                 v = verificador.verificar(n, k, f, jug, resumen)
                 self.assertTrue(v["legal"], v["errores"])
                 self.assertEqual((v["colocadas"], v["ocupadas"]), (res["colocadas"], res["ocupadas"]))
+
+    def test_busqueda_encuentra_solucion_del_ejemplo(self):
+        ruta = os.path.join(RAIZ, "instancias", "ejemplo.txt")
+        with tempfile.TemporaryDirectory() as d:
+            sol = os.path.join(d, "sol.txt")
+            res = jugar(ruta, busqueda, semilla=1, limite_s=1, salida=sol, verbose=False)
+            n, k, f = verificador.leer_instancia(ruta)
+            jug, resumen = verificador.leer_solucion(sol)
+            validacion = verificador.verificar(n, k, f, jug, resumen)
+            self.assertTrue(validacion["legal"], validacion["errores"])
+            self.assertEqual(res["colocadas"], len(f))
+
+    def test_busqueda_prechecks_imposibles(self):
+        un_casillero = TileUp(inst(1, 2, [(1, 1), (2, 1)]))
+        plan, esfuerzo = busqueda(un_casillero, semilla=1, limite_s=1)
+        self.assertEqual((len(plan), esfuerzo), (1, 0))
+
+        colores_unicos = TileUp(inst(2, 5, [(1, 1), (2, 1), (3, 1), (4, 1), (5, 1)]))
+        plan, esfuerzo = busqueda(colores_unicos, semilla=1, limite_s=1)
+        self.assertEqual((len(plan), esfuerzo), (4, 0))
+
+    def test_cli_visualiza_estados_del_plan(self):
+        with tempfile.TemporaryDirectory() as d:
+            sol = os.path.join(d, "sol.txt")
+            p = subprocess.run(
+                [sys.executable, os.path.join(RAIZ, "main.py"),
+                 os.path.join(RAIZ, "instancias", "ejemplo.txt"),
+                 "--agente", "busqueda", "--limite", "0", "--visual",
+                 "--salida", sol],
+                capture_output=True, text=True,
+            )
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertIn("Estado inicial 0/6", p.stdout)
+        for estado in range(1, 7):
+            self.assertIn(f"Estado {estado}/6 |", p.stdout)
 
     def test_determinismo(self):
         ruta = os.path.join(RAIZ, "instancias", "n5_k15_m100_s2.txt")

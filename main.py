@@ -19,11 +19,12 @@ def main(argv=None) -> int:
     ap.add_argument("--limite", type=float, default=10.0, help="limite de tiempo en segundos")
     ap.add_argument("--salida", default=None, help="archivo de solucion (por defecto <instancia>.sol)")
     ap.add_argument("--humano", action="store_true", help="jugar uno mismo por consola")
+    ap.add_argument("--visual", action="store_true", help="mostrar el tablero tras cada jugada del agente")
     a = ap.parse_args(argv)
     salida = a.salida or a.instancia.rsplit(".", 1)[0] + ".sol"
     try:
         jugar(a.instancia, agente=AGENTES[a.agente], humano=a.humano,
-              semilla=a.semilla, limite_s=a.limite, salida=salida)
+              semilla=a.semilla, limite_s=a.limite, salida=salida, visual=a.visual)
     except InstanciaError as e:
         print(f"error de instancia: {e}", file=sys.stderr)
         return 2

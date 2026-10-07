@@ -7,6 +7,7 @@ Solo usa la biblioteca estándar de Python (3.8+).
 
 ```bash
 python main.py instancias/ejemplo.txt --agente voraz --semilla 1 --limite 10 --salida sol.txt
+python main.py instancias/n3_k5_m30_s1.txt --agente busqueda --limite 10 --visual
 python main.py instancias/ejemplo.txt --humano          # jugar uno mismo
 python verificador.py instancias/ejemplo.txt sol.txt [--pasos] [--json]
 python generador.py 5 15 100 --semilla 4 -o instancias/mia.txt
@@ -45,7 +46,33 @@ def mi_agente(juego: TileUp, semilla: int, limite_s: float) -> tuple[list[tuple[
 
 Regístrelo en `agentes/__init__.py` (`AGENTES`). El agente recibe una **copia** del juego;
 `tileup.juego.jugar()` ejecuta el plan sobre el motor oficial, así que no puede alterar las reglas.
-`aleatorio` y `voraz` son solo líneas base para probar el motor.
+`aleatorio` y `voraz` son líneas base.
+
+## Agente de búsqueda
+
+El juego tiene un solo decisor y una secuencia de fichas fija, así que no hay un adversario que justifique
+minimax. La tarea es planificar una secuencia de colocaciones que evite llenar el tablero antes de consumir
+las fichas. Por eso `busqueda` usa DFS con backtracking: explora planes completos cuando puede, conserva el
+mejor prefijo si se agota el tiempo y optimiza en el orden pedido: fichas colocadas primero y celdas vacías
+después.
+
+En `agentes/busqueda.py`, el agente prepara primero un plan de respaldo: si `M <= N*N`, coloca una ficha en
+cada una de las primeras `M` celdas, lo que garantiza una solución completa; si `M > N*N`, usa el agente
+voraz para obtener un prefijo inicial. Luego DFS prueba cada celda legal usando `step()` y `deshacer()`.
+Antes de descender, `simular()` estima cuántas celdas libera cada jugada; se prueban primero las que fusionan
+grupos mayores. Una semilla fija resuelve empates de forma reproducible. La tabla de transposiciones usa
+`clave_colores()`: el índice de la próxima ficha y la disposición de colores determinan las jugadas futuras,
+mientras que los valores fusionados no cambian la legalidad de las jugadas. El límite de tiempo se revisa
+durante la expansión; `esfuerzo` reporta nodos expandidos.
+
+Hay dos casos imposibles que se resuelven directamente: en un tablero `N=1` solo cabe una ficha, y si todas
+las fichas tienen colores distintos no puede ocurrir ninguna fusión. Fuera de esos casos, cuando `M > N*N`,
+la posibilidad de completar depende de la secuencia concreta, no solo de `N` y `K`; que la búsqueda termine
+con un prefijo no demuestra que no exista una solución.
+
+La opción `--visual` muestra el tablero inicial y el tablero resultante de cada jugada del plan que se ejecuta,
+con su ficha, posición, fusiones y celdas vacías. Es la reproducción de la solución elegida, no una impresión
+de todas las ramas exploradas por DFS.
 
 `jugar(instancia, agente=None, humano=False, semilla=0, limite_s=10.0, salida=None)` es la función que inicia la partida.
 

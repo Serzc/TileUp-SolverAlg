@@ -4,5 +4,6 @@ Por ahora solo hay lineas base para probar el motor; aqui se agregan el agente
 de busqueda y el evolutivo.
 """
 from .base import aleatorio, voraz
+from .busqueda import busqueda
 
-AGENTES = {"aleatorio": aleatorio, "voraz": voraz}
+AGENTES = {"aleatorio": aleatorio, "voraz": voraz, "busqueda": busqueda}
