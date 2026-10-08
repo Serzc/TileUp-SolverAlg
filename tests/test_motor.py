@@ -10,7 +10,7 @@ sys.path.insert(0, RAIZ)
 from tileup import InstanciaError, JugadaIlegal, TileUp, DERROTA, VICTORIA  # noqa: E402
 from tileup.instancia import parsear_instancia  # noqa: E402
 from tileup.juego import jugar  # noqa: E402
-from agentes import voraz, aleatorio, busqueda  # noqa: E402
+from agentes import voraz, aleatorio, busqueda, evolutivo  # noqa: E402
 import verificador  # noqa: E402
 
 
@@ -179,6 +179,18 @@ class TestIntegracion(unittest.TestCase):
         self.assertIn("Estado inicial 0/6", p.stdout)
         for estado in range(1, 7):
             self.assertIn(f"Estado {estado}/6 |", p.stdout)
+    def test_evolutivo_legal_y_determinista(self):
+        ruta = os.path.join(RAIZ, "instancias", "n4_k10_m60_s2.txt")
+        with tempfile.TemporaryDirectory() as d:
+            sol = os.path.join(d, "sol.txt")
+            a = jugar(ruta, evolutivo, semilla=3, limite_s=2, salida=sol, verbose=False)
+            n, k, f = verificador.leer_instancia(ruta)
+            jug, resumen = verificador.leer_solucion(sol)
+            self.assertTrue(verificador.verificar(n, k, f, jug, resumen)["legal"])
+            b = jugar(ruta, evolutivo, semilla=3, limite_s=2, verbose=False)
+            self.assertEqual(a["jugadas"], b["jugadas"])
+            self.assertGreater(a["esfuerzo"], 0)          # evaluaciones de aptitud
+            self.assertLessEqual(a["tiempo_s"], 2.0)      # respeta el limite
 
     def test_determinismo(self):
         ruta = os.path.join(RAIZ, "instancias", "n5_k15_m100_s2.txt")

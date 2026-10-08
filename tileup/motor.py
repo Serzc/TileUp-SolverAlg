@@ -49,6 +49,7 @@ class TileUp:
             if c > 0: v.append(i - 1)
             if c < self.n - 1: v.append(i + 1)
             self._vec.append(tuple(v))
+        self.vecinos = self._vec   # alias publico: vecinos[i] -> celdas vecinas de i
         self.reiniciar()
 
     # ------------------------------------------------------------------ estado
@@ -235,7 +236,7 @@ class TileUp:
     def clonar(self) -> "TileUp":
         otro = TileUp.__new__(TileUp)
         otro.inst, otro.n, otro.k, otro.fichas = self.inst, self.n, self.k, self.fichas
-        otro._vec = self._vec
+        otro._vec = otro.vecinos = self._vec
         otro.color, otro.valor = self.color[:], self.valor[:]
         otro.siguiente, otro.ocupadas, otro.estado = self.siguiente, self.ocupadas, self.estado
         otro.jugadas = self.jugadas[:]

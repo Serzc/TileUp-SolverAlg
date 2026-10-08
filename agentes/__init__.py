@@ -5,5 +5,9 @@ de busqueda y el evolutivo.
 """
 from .base import aleatorio, voraz
 from .busqueda import busqueda
+from .evolutivo import evolutivo
 
-AGENTES = {"aleatorio": aleatorio, "voraz": voraz, "busqueda": busqueda}
+AGENTES = {"aleatorio": aleatorio, "voraz": voraz, "busqueda": busqueda, "evolutivo": evolutivo}
+
+
+

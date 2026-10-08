@@ -16,6 +16,11 @@ LOTE = [  # (N, K, M). K alto respecto a N*N: con pocos colores el juego es triv
     (5, 15, 100),
     (6, 20, 150),
     (7, 30, 200),
+    # Duras: K = N*N, casi no hay margen para fusionar.
+    (3, 9, 30),
+    (4, 16, 60),
+    (5, 25, 100),
+    (6, 36, 150),
 ]
 SEMILLAS = (1, 2, 3)
 
