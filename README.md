@@ -1,28 +1,83 @@
 # TileUp-SolverAlg
 
 Motor del juego TileUp, dos agentes solucionadores y un verificador independiente.
-Tarea Corta 1 de IC-6200. Python 3.8 o superior. Solo biblioteca estándar, no hay nada que instalar.
+Tarea Corta 1 de IC-6200. Python 3.8 o superior, solo biblioteca estándar. No hay nada que instalar.
 
 ## Uso rápido
 
 ```bash
-python main.py instancias/ejemplo.txt --agente voraz --semilla 1 --limite 10 --salida sol.txt
-python main.py instancias/n3_k5_m30_s1.txt --agente busqueda --limite 10 --visual
-python main.py instancias/ejemplo.txt --agente evolutivo --semilla 1 --limite 10 --salida sol.txt
-python main.py instancias/ejemplo.txt --humano          # jugar uno mismo
-python verificador.py instancias/ejemplo.txt sol.txt [--pasos] [--json]
-python generador.py 5 15 100 --semilla 4 -o instancias/mia.txt
-python generador.py --lote                              # regenera instancias/
-python -m unittest discover -s tests -v                 # pruebas
-python experimentos/barrido_evolutivo.py --limite 10 --semillas 5
-python experimentos/comparacion.py --limite 10 --semillas 3   # comparación experimental
+python main.py <instancia> [flags]                 # resolver una instancia
+python verificador.py <instancia> <solucion>       # validar una solución
+python generador.py <N> <K> <M> [flags]            # crear una instancia
+python -m unittest discover -s tests               # correr las pruebas
+python experimentos/comparacion.py [flags]         # comparar los agentes
+python experimentos/barrido_evolutivo.py [flags]   # ajustar el evolutivo
 ```
 
-Agentes disponibles: `busqueda`, `evolutivo`, y `voraz` y `aleatorio` como líneas base.
-Si no se indica `--salida`, la solución se escribe en `<instancia>.sol`.
+Ejemplo completo, de la instancia a la solución validada:
 
-En modo humano: `fila col` coloca la ficha, `u` deshace y `q` sale.
-La solución parcial se guarda igual.
+```bash
+python main.py instancias/n5_k15_m100_s1.txt --agente evolutivo --semilla 1 --limite 10 --salida sol.txt
+python verificador.py instancias/n5_k15_m100_s1.txt sol.txt
+```
+
+### Flags de `main.py`
+
+| Flag | Por defecto | Qué hace |
+|---|---|---|
+| `--agente NOMBRE` | `voraz` | Agente a usar: `busqueda`, `evolutivo`, `voraz` o `aleatorio`. |
+| `--semilla N` | `0` | Semilla del agente. Fija el resultado por completo. |
+| `--limite S` | `10` | Límite de tiempo en segundos. |
+| `--salida RUTA` | `<instancia>.sol` | Archivo de solución. Se escribe también en derrota. |
+| `--humano` | apagado | Jugar uno mismo. `fila col` coloca, `u` deshace, `q` sale. |
+| `--visual` | apagado | Mostrar el tablero tras cada jugada del plan. |
+
+### Flags de los demás programas
+
+| Programa | Flag | Qué hace |
+|---|---|---|
+| `verificador.py` | `--pasos` | Imprime la partida paso a paso. |
+| | `--json` | Devuelve el veredicto y las métricas en JSON. |
+| `generador.py` | `--semilla N` | Semilla de la secuencia. Por defecto 0. |
+| | `--vmax V` | Valor máximo de una ficha. Por defecto 4. |
+| | `-o RUTA` | Archivo de salida. Por defecto imprime en consola. |
+| | `--lote` | Regenera el conjunto completo, ignorando N, K y M. |
+| `barrido_evolutivo.py` | `--limite S`, `--semillas N` | Límite por corrida y semillas por configuración. |
+| | `--solo P1 P2` | Barre solo esos parámetros. |
+| | `-o RUTA` | CSV de salida. |
+
+Los flags de `comparacion.py` están en [Comparación experimental](#comparación-experimental).
+
+## Formatos
+
+**Instancia.** Texto plano. Se ignoran las líneas vacías y lo que siga a `#`.
+Primero `N K`, luego `M`, luego M líneas con `color valor` en el orden de colocación.
+
+```
+4 3     # tablero 4x4, 3 colores
+6       # 6 fichas
+1 2
+2 1
+1 3
+3 1
+1 1
+2 4
+```
+
+**Solución.** Una línea por colocación con `índice fila columna`, todo desde cero.
+La última línea empieza con `#` y resume el resultado.
+
+```
+0 0 0
+1 1 1
+2 0 1
+3 2 2
+4 0 2
+5 1 2
+# colocadas=6 ocupadas=3 mayor=6
+```
+
+Una instancia mal formada produce un mensaje de error legible y código de salida 2.
 
 ## Estructura
 
@@ -36,7 +91,7 @@ La solución parcial se guarda igual.
 | `experimentos/` | Comparación entre agentes y barrido de parámetros del evolutivo. |
 | `tests/` | Pruebas unitarias y de integración. |
 
-## API del motor (`tileup/motor.py`)
+## API del motor
 
 ```python
 from tileup import TileUp, leer_instancia, JugadaIlegal
@@ -46,27 +101,18 @@ obs, recompensa, terminado, info = j.step(j.siguiente, fila, col)
 
 | Método | Qué hace |
 |---|---|
-| `step(ficha, fila, col)` | Coloca una ficha. Ver abajo. |
+| `step(ficha, fila, col)` | Coloca una ficha. Devuelve estado, celdas liberadas, si terminó y detalles. |
 | `deshacer()` | Revierte la última jugada. Sirve para backtracking. |
 | `acciones_legales()` | Lista las celdas vacías. |
 | `simular(fila, col)` | Prueba una jugada sin aplicarla. Devuelve `(liberadas, valor)`. |
 | `jugar_secuencia(celdas)` | Aplica un plan completo de una vez. |
-| `clonar()` | Copia independiente del juego. |
-| `reiniciar()` | Vuelve al tablero vacío. |
+| `clonar()`, `reiniciar()` | Copia independiente, o volver al tablero vacío. |
 | `clave()`, `clave_colores()` | Estado hashable, para tablas de visitados. |
-| `solucion_texto()`, `guardar_solucion(ruta)` | Escriben la solución. |
-| `render()` | Dibuja el tablero. |
+| `solucion_texto()`, `guardar_solucion(ruta)`, `render()` | Salida. |
 
 Consulta del estado: `estado`, `terminado`, `colocadas`, `ocupadas`, `mayor`, `ficha_actual()`, `tablero()`.
 
-`step` recibe el índice de la ficha, que debe ser `j.siguiente`. Devuelve cuatro cosas:
-
-- `obs`: el estado actual.
-- `recompensa`: las celdas que liberó la fusión, o sea `|G| - 1`.
-- `terminado`: si la partida acabó, en victoria o en derrota.
-- `info`: detalles de la jugada. Trae `fusion`, `tam_grupo`, `celdas_fusionadas`, `valor_resultante`, `estado`, `colocadas`, `ocupadas` y `mayor`.
-
-Una jugada ilegal lanza `JugadaIlegal`. El estado no cambia.
+`step` exige que `ficha` sea `j.siguiente`. Una jugada ilegal lanza `JugadaIlegal` y el estado no cambia.
 
 ## Contrato de un agente
 
@@ -77,10 +123,8 @@ def mi_agente(juego: TileUp, semilla: int, limite_s: float) -> tuple[list[tuple[
 
 El esfuerzo son nodos expandidos o evaluaciones de aptitud, según el algoritmo.
 Hay que registrar el agente en `AGENTES`, dentro de `agentes/__init__.py`.
-El agente recibe una copia del juego, no el original.
-`tileup.juego.jugar()` ejecuta el plan sobre el motor oficial, así que un agente no puede alterar las reglas.
-
-`jugar(instancia, agente=None, humano=False, semilla=0, limite_s=10.0, salida=None)` es la función que inicia la partida.
+El agente recibe una copia del juego. `tileup.juego.jugar()` ejecuta el plan sobre el motor oficial,
+así que un agente no puede alterar las reglas.
 
 ## Agente de búsqueda
 
@@ -110,53 +154,123 @@ de todas las ramas exploradas por DFS.
 
 ## Agente evolutivo
 
-Está en `agentes/evolutivo.py`. Evoluciona los pesos de una política voraz.
+Está en `agentes/evolutivo.py`. No evoluciona la partida: evoluciona los **pesos de una política**.
 
-- Un individuo es un vector de 9 pesos reales, uno por cada rasgo de una celda.
-- Para evaluarlo se juega la instancia completa con esos pesos.
-- En cada paso puntúa las celdas vacías y coloca en la de mayor puntaje.
-- La aptitud es `(fichas colocadas, −celdas ocupadas)`, el orden del concurso.
-- El paro es un presupuesto fijo de evaluaciones. El reloj queda como red de seguridad.
-- El esfuerzo reportado son las evaluaciones de aptitud.
-- Los empates se resuelven por índice de celda. Todo el azar sale de la semilla.
+La política es voraz de un paso. En cada ficha puntúa las celdas vacías y coloca en la mejor.
+Los pesos deciden qué hace buena a una celda, y el evolutivo busca esos pesos.
+Se evoluciona durante la corrida, sobre la instancia que se está resolviendo. No hay entrenamiento previo.
 
-Cada decisión de diseño, con lo que se descartó, está en [`agentes/decisiones.md`](agentes/decisiones.md).
+### Los pesos
+
+Un individuo es un vector de **9 números reales**. Cada uno multiplica un rasgo de la celda candidata.
+El puntaje de una celda es `Σ pesos[i] × rasgos[i]`, y se coloca en la de mayor puntaje.
+Los empates se resuelven por índice de celda, no al azar, para que la corrida sea reproducible.
+
+| Peso | Qué mide el rasgo |
+|---|---|
+| `liberadas` | Celdas que liberaría la fusión, o sea `\|G\| - 1`. |
+| `fusion` | Vale 1 si hay fusión. |
+| `libres_p` | Vecinos vacíos que le quedarían a la ficha resultante. |
+| `distintos` | Vecinos ocupados por otro color. |
+| `borde` | Vale 1 si la celda toca un borde. |
+| `esquina` | Vale 1 si la celda es una esquina. |
+| `dist_centro` | Distancia Manhattan al centro, normalizada. |
+| `encierro` | Vecinos ocupados que quedarían sin salida. |
+| `prox_libres` | `libres_p` por qué tan pronto reaparece ese color. |
+
+El signo dice si el rasgo atrae o repele. La magnitud dice cuánto pesa frente a los demás.
+La escala global no importa: multiplicar los 9 pesos por 10 no cambia ninguna decisión.
+Todos los rasgos dependen de la celda, porque un rasgo igual para todas no cambiaría la elección.
+El valor de la ficha no es un rasgo: la fusión conserva la suma, así que no depende del agente.
+
+### Cómo se evalúa la aptitud
+
+Evaluar un individuo es **jugar la instancia completa** con sus pesos, de la primera ficha a la última.
+Eso es una evaluación de aptitud, y es la unidad de esfuerzo que reporta el agente.
+
+La aptitud es la tupla `(fichas colocadas, −celdas ocupadas)`. Python compara tuplas en orden, así que
+primero mandan las fichas colocadas y en empate decide tener menos celdas ocupadas.
+Es el orden del concurso en sus dos primeros criterios.
+
+### Operadores y valores fijos
+
+| Componente | Valor | Por qué |
+|---|---|---|
+| Población | 24 | Lo mejor del barrido, por poco. Con 12 fue claramente peor. |
+| Población inicial | 1 imita al voraz, 23 uniformes en [−1, 1] | Da un piso de arranque sin perder diversidad. |
+| Selección | Torneo de 3 | Presión media. 2 y 5 dieron lo mismo dentro del ruido. |
+| Cruce | Aritmético, `p = 0.9` | `alfa × padre1 + (1 − alfa) × padre2`. El barrido no mostró que aporte. |
+| Mutación | Gaussiana, `p = 0.5` por gen | Cambia medio vector por hijo. 0.3 y 1.0 dieron lo mismo. |
+| `sigma` | 0.60 → 0.05 | Baja en línea recta con el presupuesto. Explora al inicio, afina al final. |
+| Reemplazo | Generacional, elitismo 2 | Los dos mejores pasan intactos. 1 y 4 dieron lo mismo. |
+| `ventana` | 8 fichas futuras | Alimenta `prox_libres`. Con 0 baja un poco; de 4 a 16 da igual. |
+| Paro | Presupuesto de evaluaciones | Ver abajo. El reloj corta en el 90% del límite. |
+
+El mejor plan encontrado se guarda aparte, así que nunca se pierde aunque la población empeore.
+
+### Cuántas generaciones corre
+
+El paro no es un número fijo de generaciones, sino un presupuesto de evaluaciones:
+
+```
+presupuesto = límite_en_segundos × rendimiento / (M × N²)
+```
+
+Depende de la instancia y del límite, no de la velocidad real de la máquina. Por eso la corrida es
+reproducible. `rendimiento` vale 0.45e6 y está calibrado en la máquina del grupo.
+
+Cada generación cuesta 22 evaluaciones, no 24: los 2 élites no se reevalúan.
+Con límite de 10 segundos:
+
+| Instancia | Presupuesto | Generaciones |
+|---|---|---|
+| N=3, M=30 | 16 666 | unas 756 |
+| N=4, M=60 | 4 687 | unas 211 |
+| N=5, M=100 | 1 800 | unas 80 |
+| N=6, M=150 | 833 | unas 36 |
+| N=7, M=200 | 459 | unas 19 |
+
+En las corridas de la comparación el reloj nunca hizo falta: el máximo fue 8.52 s de 10.
+
+### Reproducibilidad y procedimiento
+
+- Todo el azar sale de un solo `random.Random(semilla)`: población inicial, torneos, cruces y mutaciones.
+- El desempate entre celdas es por índice y el presupuesto depende de los datos de entrada, no del reloj.
+- Los parámetros se fijaron con `experimentos/barrido_evolutivo.py`, que varía uno a la vez desde la base
+  sobre 4 instancias de calibración con K alto y 3 semillas.
+- Lectura honesta del barrido: todas las variantes quedaron entre 0.573 y 0.603 de fichas colocadas, con un
+  error estándar cercano a 0.023, así que ninguna diferencia se distingue del ruido. Lo que se reporta es
+  que el algoritmo es robusto a estos parámetros, no que la base sea óptima.
+
 
 ## Comparación experimental
 
-El script `experimentos/comparacion.py` corre los dos agentes sobre el mismo conjunto de instancias.
+`experimentos/comparacion.py` corre los dos agentes sobre el mismo conjunto de instancias.
 Cada corrida guarda su solución y la valida con el verificador independiente.
 
 ```bash
 python experimentos/comparacion.py --limite 10 --semillas 3
 ```
 
-Por defecto usa una instancia por cada configuración de N, K y M, con 3 semillas por agente.
-Son 12 configuraciones, o sea 72 corridas.
+Por defecto usa una instancia por configuración de N, K y M, con 3 semillas por agente: 72 corridas.
 
-Opciones útiles:
-
-- `--patron "instancias/n5*.txt"` limita el conjunto de instancias.
-- `--agentes evolutivo voraz` elige qué agentes comparar.
-- `--limite` y `--semillas` fijan el límite de tiempo y la cantidad de semillas.
-- `--reanudar` continúa una corrida interrumpida. El CSV se escribe fila por fila.
-- `--solo-resumen` rehace la tabla desde el CSV, sin volver a correr nada.
-
-Produce tres salidas:
-
-| Archivo | Contenido |
+| Flag | Qué hace |
 |---|---|
-| `experimentos/comparacion.csv` | Una fila por corrida, con todas las métricas. |
-| `experimentos/comparacion_resumen.md` | Tabla por instancia y agente, con media y desviación. |
-| `experimentos/soluciones/*.sol` | La solución de cada corrida, para re-verificarla. |
+| `--patron GLOB` | Limita el conjunto de instancias. |
+| `--agentes A B` | Elige qué agentes comparar. |
+| `--limite S`, `--semillas N` | Límite por corrida y semillas por agente. |
+| `--reanudar` | Continúa una corrida interrumpida. El CSV se escribe fila por fila. |
+| `--solo-resumen` | Rehace la tabla desde el CSV, sin correr nada. |
+| `--csv`, `--md`, `--soluciones` | Rutas de salida. |
 
-Las métricas por corrida son las que pide el enunciado: fichas colocadas, celdas ocupadas, valor de la
-ficha mayor, tiempo y esfuerzo. El esfuerzo son nodos expandidos en la búsqueda y evaluaciones de aptitud
-en el evolutivo, así que entre agentes no es comparable en términos absolutos.
+Produce `experimentos/comparacion.csv` con una fila por corrida,
+`experimentos/comparacion_resumen.md` con la tabla por instancia y agente, y las soluciones en
+`experimentos/soluciones/`. Las métricas son las que pide el enunciado: fichas colocadas, celdas ocupadas,
+ficha mayor, tiempo y esfuerzo. El esfuerzo no es comparable entre agentes en términos absolutos.
 
-### Resultados de la última corrida
+### Resultados
 
-Límite de 10 segundos, 3 semillas, 12 configuraciones. La tabla completa está en
+Límite de 10 s, 3 semillas, 12 configuraciones. Tabla completa en
 [`experimentos/comparacion_resumen.md`](experimentos/comparacion_resumen.md).
 
 | Agente | Instancias completadas | Corridas legales | Tiempo medio | Esfuerzo medio |
@@ -164,42 +278,32 @@ Límite de 10 segundos, 3 semillas, 12 configuraciones. La tabla completa está 
 | busqueda | 6/12 | 36/36 | 10.0 s | 627 850 nodos |
 | evolutivo | 8/12 | 36/36 | 4.8 s | 5 965 evaluaciones |
 
-El evolutivo gana en 9 de las 12 configuraciones y empata en 3.
-La búsqueda gana en una, `n3_k9_m30`, por una ficha.
-Las 72 soluciones producidas son legales según el verificador.
+El evolutivo gana 9 de las 12 configuraciones y empata 3. La búsqueda gana `n3_k9_m30` por una ficha.
+Las 72 soluciones son legales según el verificador.
 
-Dos lecturas que conviene mirar antes del informe:
+Dos observaciones:
 
 - La búsqueda consume siempre el límite completo y en 6 corridas lo excedió, con un máximo de 10.92 s.
-  El enunciado deja fuera del concurso al agente que se pasa del límite, así que hay que recortar el
-  margen de su revisión de reloj.
-- Con K cercano a N² ningún agente completa la secuencia. Ahí ambos quedan entre el 35% y el 40% de las
-  fichas, y el evolutivo gana por poco. Esas son las instancias `n3_k9`, `n4_k16`, `n5_k25` y `n6_k36`.
+  El enunciado deja fuera del concurso al agente que se pasa, así que hay que recortar su margen de reloj.
+- Con K cercano a N² ningún agente completa la secuencia. Ambos quedan entre el 35% y el 40% de las fichas.
 
 ## Verificador
 
-`verificador.py` no importa nada de `tileup/` ni de `agentes/`.
-Reimplementa la lectura y las reglas por su cuenta, para arbitrar de forma independiente.
+`verificador.py` no importa nada de `tileup/` ni de `agentes/`: reimplementa la lectura y las reglas por
+su cuenta, para arbitrar de forma independiente.
 
-Rechaza una solución si encuentra:
-
-- fichas fuera de orden,
-- celdas ocupadas o fuera del tablero,
-- jugadas después de que la partida terminó,
-- un resumen `# colocadas=.. ocupadas=.. mayor=..` que no coincide con la reproducción.
-
-Códigos de salida: 0 si la solución es legal, 1 si es ilegal, 2 si el archivo está mal formado.
+Rechaza una solución si encuentra fichas fuera de orden, celdas ocupadas o fuera del tablero, jugadas
+después de que la partida terminó, o un resumen que no coincide con la reproducción.
+Códigos de salida: 0 legal, 1 ilegal, 2 archivo mal formado.
 
 ## Instancias
 
 `instancias/ejemplo.txt` y `ejemplo.sol` son el ejemplo del enunciado.
 El resto son 12 configuraciones con 3 semillas cada una, nombradas `nN_kK_mM_sS.txt`.
 
-K se eligió alto respecto a N². Con pocos colores el juego es trivial.
-La razón es que colocar cada ficha junto a otra de su color deja siempre K celdas ocupadas o menos.
-
-Las últimas cuatro configuraciones usan K = N². Son las duras: casi no hay margen para fusionar
-y ningún agente completa la secuencia.
+K se eligió alto respecto a N², porque con pocos colores el juego es trivial: colocar cada ficha junto a
+otra de su color deja siempre K celdas ocupadas o menos. Las últimas cuatro configuraciones usan K = N²
+y son las duras, donde ningún agente completa la secuencia.
 
 ## Pruebas
 
@@ -207,6 +311,6 @@ y ningún agente completa la secuencia.
 python -m unittest discover -s tests -v
 ```
 
-Las unitarias prueban el motor por separado: fusión de dos fichas, fusión de tres o más,
-colocación sin fusión, detección de derrota y archivos mal formados.
-Las de integración resuelven una instancia completa y validan la solución con el verificador.
+Las unitarias prueban el motor por separado: fusión de dos fichas, fusión de tres o más, colocación sin
+fusión, detección de derrota y archivos mal formados. Las de integración resuelven una instancia completa
+y validan la solución con el verificador.
