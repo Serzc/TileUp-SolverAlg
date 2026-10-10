@@ -15,5 +15,5 @@ En particular, la IA colaboró en:
 - Implementar la validación independiente de soluciones y comprobación de reglas.
 - Construir la estructura del proyecto y la API de acceso al motor.
 - Redactar la documentación técnica del repositorio, incluida la explicación de uso, agentes y contrato del motor.
-- Proponer y desarrollar agentes (base, búsqueda y evolutivo).
+- Colaborar con el entendimiento de la implementación de los agentes. Se discutieron estrategias y propuestas hasta llegar a un producto final que cumple con lo esperado.
 - Ayudar a integrar flags y opciones de línea de comandos.
